@@ -19,7 +19,7 @@ DECLARE_CRC8_TABLE(aw_crc8_table);
 static char *profile_name[AW88395_PROFILE_MAX] = {
 	"Music", "Voice", "Voip", "Ringtone",
 	"Ringtone_hs", "Lowpower", "Bypass",
-	"Mmi", "Fm", "Notification", "Receiver"
+	"Mmi", "Fm", "Notification", "Receiver", "Off"
 };
 
 static int aw_parse_bin_header(struct aw_device *aw_dev, struct aw_bin *bin);
@@ -212,12 +212,6 @@ static int aw_get_multi_bin_header(struct aw_device *aw_dev, struct aw_bin *bin)
 static int aw_parse_bin_header(struct aw_device *aw_dev, struct aw_bin *bin)
 {
 	unsigned int bin_data_type;
-
-	if (bin->info.len < sizeof(struct bin_header_info)) {
-		dev_err(aw_dev->dev, "bin_header_info size[%d] overflow file size[%d]\n",
-				(int)sizeof(struct bin_header_info), bin->info.len);
-		return -EINVAL;
-	}
 
 	bin_data_type = le32_to_cpup((void *)(bin->p_addr + BIN_DATA_TYPE_OFFSET));
 	dev_dbg(aw_dev->dev, "aw_bin_parse bin_data_type 0x%x\n", bin_data_type);
