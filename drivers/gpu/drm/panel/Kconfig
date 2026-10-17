@@ -1368,5 +1368,14 @@ config DRM_PANEL_FTP_8201
          Say Y here if you want to enable support for the panel-ft8201e-hjr104017d-a1
          This type of panel is mainly found on mobile phones.
 
+config DRM_PANEL_TD4160B
+       tristate "RMX5303 panel"
+       depends on OF
+       depends on DRM_MIPI_DSI
+       depends on BACKLIGHT_CLASS_DEVICE
+       help
+         Say Y here if you want to enable support for the panel-td4160b-dsjm-boe-mipi-hd
+         This type of panel is mainly found on mobile phones.
+
 
 endmenu

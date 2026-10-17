@@ -1,0 +1,292 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2026 
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/media/sprd-camsys.h>
+#include <dt-bindings/usb/pd.h>
+#include "ums9230.dtsi"
+#include "sc2730.dtsi"
+
+/ {
+	model = "Realme C71";
+
+	compatible = "sprd,ums9230-dhaka", "sprd,ums9230";
+
+        aliases {
+                serial0 = &uart0;
+                serial1 = &uart1;
+                mmc0 = &sdio0;
+                i2c0 = &i2c0;
+                i2c1 = &i2c1;
+                i2c2 = &i2c2;
+                i2c3 = &i2c3;
+                i2c4 = &i2c4;
+                i2c5 = &i2c5;
+                i2c6 = &i2c6;
+                i2c7 = &aon_i2c0;
+        };
+
+
+	chosen {
+		bootargs = "clk_ignore_unused pd_ignore_unused regulator_ignore_unused";
+
+		framebuffer {
+			compatible = "simple-framebuffer";
+			memory-region = <&framebuffer_region>;
+			width = <720>;
+			height = <1604>;
+			stride = <(720 * 4)>;
+			format = "a8r8g8b8";
+			status = "disabled"; /* display driver is enabled */
+
+		};
+	};
+
+        memory@80000000 {
+                device_type = "memory";
+                reg = <0x00 0x80000000 0x01 0xfffff000>;
+        };
+
+	reserved-memory {
+		framebuffer_region: framebuffer-region@9caa8000 {
+			compatible = "framebuffer";
+			reg = <0 0x9caa8000 0 (720 * 1604 * 4)>;
+			iommu-addresses = <&dpu 0x9caa8000 (720 * 1604 * 4)>;
+			no-map;
+		};
+
+		ramoops@fff80000 {
+			compatible = "ramoops";
+			reg = <0x0 0xfff80000 0x0 0x40000>;
+			console-size = <0x8000>;
+			record-size = <0x8000>;
+			pmsg-size = <0x8000>;
+		};
+
+		linux,cma {
+			compatible = "shared-dma-pool";
+			size = <0x0 0x8000000>;
+			reusable;
+			linux,cma-default;
+		};
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		key-power {
+			label = "Power Key";
+			linux,code = <KEY_POWER>;
+			gpios = <&pmic_eic 1 GPIO_ACTIVE_LOW>;
+			debounce-interval = <0x02>;
+			wakeup-source;
+		};
+
+		key-volumeup {
+			label = "Volume Up Key";
+			linux,code = <KEY_VOLUMEUP>;
+			gpios = <&ap_gpio 125 GPIO_ACTIVE_LOW>;
+			debounce-interval = <2>;
+			wakeup-source;
+		};
+
+		key-volumedown {
+			label = "Volume Down Key";
+			linux,code = <KEY_VOLUMEDOWN>;
+			gpios = <&ap_gpio 124 GPIO_ACTIVE_LOW>;
+			debounce-interval = <2>;
+			wakeup-source;
+		};
+	};
+
+        bat: battery {
+                compatible = "simple-battery";
+                charge-full-design-microamp-hours = <4096000>;
+                charge-term-current-microamp = <130000>;
+                constant-charge-voltage-max-microvolt = <4400000>;
+                constant-charge-current-max-microamp = <2000000>;
+                voltage-min-design-microvolt = <3500000>;
+                voltage-max-design-microvolt = <4370000>;
+                factory-internal-resistance-micro-ohms = <268000>;
+                resistance-temp-table = <45 53>, <25 100>, <10 395>,
+                                        <0 567>, <(-10) 793>;
+                ocv-capacity-celsius = <20>;
+                ocv-capacity-table-0 = <4362000 100>, <4316000 95>,
+                                       <4256000 90>, <4197000 85>,
+                                       <4142000 80>, <4089000 75>,
+                                       <4040000 70>, <3981000 65>,
+                                       <3941000 60>, <3890000 55>,
+                                       <3853000 50>, <3826000 45>,
+                                       <3805000 40>, <3788000 35>,
+                                       <3776000 30>, <3767000 25>,
+                                       <3751000 20>, <3725000 15>,
+                                       <3693000 10>, <3675000 5>,
+                                       <3400000 0>;
+        };
+
+};
+
+&i2c6 {
+        status = "okay";
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        bq25601_charger: charger@6f {
+                compatible = "ti,bq25601";
+                reg = <0x6f>;
+                monitored-battery = <&bat>;
+
+                bq25601_otg_vbus: usb-otg-vbus {
+                        regulator-name = "usb-otg-vbus";
+                };
+        };
+};
+
+&pmic_typec_pd {
+        vbus-supply = <&bq25601_otg_vbus>;
+        status = "okay";
+
+        connector {
+                compatible = "usb-c-connector";
+                label = "USB-C";
+                data-role = "dual";
+                power-role = "dual";
+                try-power-role = "sink";
+                source-pdos = <PDO_FIXED(5000, 1200, PDO_FIXED_USB_COMM)>;
+                sink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;
+                op-sink-microwatt = <10000000>;
+        
+                port {
+                        tcpc_hs_ep: endpoint {
+                                remote-endpoint = <&usb_hs_ep>;
+                        };
+                };
+        };
+};
+
+&usb {
+        dr_mode = "otg";
+        usb-role-switch;
+        role-switch-default-mode = "peripheral";
+        status = "okay";
+
+        port {
+                usb_hs_ep: endpoint {
+                        remote-endpoint = <&tcpc_hs_ep>;
+                };
+        };
+};
+
+&hsphy {
+        phy-supply = <&vddusb33>;
+        status = "okay";
+};
+
+&sc2730_fgu {
+        power-supplies = <&bq25601_charger>;
+        monitored-battery = <&bat>;
+        sprd,calib-resistance-micro-ohms = <4980>;
+
+        status = "okay";
+};
+
+
+/* SD Card */
+&sdio0 {
+        status = "okay";
+
+        vmmc-supply = <&vddsdcore>;
+        vqmmc-supply = <&vddsdio>;
+        cd-gpios = <&eic_async 35 GPIO_ACTIVE_HIGH>;
+
+        bus-width = <4>;
+        no-sdio;
+        no-mmc;
+        sprd,phy-delay-sd-uhs-sdr104 = <0x7f 0x73 0x72 0x72>;
+        sprd,phy-delay-sd-uhs-sdr50 = <0x6e 0x7f 0x01 0x01>;
+        sprd,phy-delay-sd-highspeed = <0x7f 0x1a 0x9a 0x9a>;
+        sprd,phy-delay-legacy = <0x7f 0x1a 0x9a 0x9a>;
+        sd-uhs-sdr104;
+        sd-uhs-sdr50;
+};
+
+&disp {
+        status = "okay";
+};
+
+&dpu {
+        memory-region = <&framebuffer_region>;
+        status = "okay";
+};
+  
+&dsi {
+        status = "okay";
+
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        pan: panel@0 {
+                compatible = "boe,td4160b-dsjm-mipi-hd";
+                reg = <0>;
+                reset-gpios = <&ap_gpio 50 GPIO_ACTIVE_HIGH>;
+                avdd-gpio = <&ap_gpio 135 GPIO_ACTIVE_HIGH>;
+                avee-gpio = <&ap_gpio 136 GPIO_ACTIVE_HIGH>;
+
+                port {
+                        panel_in: endpoint {
+                                remote-endpoint = <&dsi_out>;
+                        };
+                };
+        };
+};
+
+&dsi_out {
+        remote-endpoint = <&panel_in>;
+};
+
+&gpu {
+        mali-supply = <&vddgpu>;
+        status = "okay";
+};
+
+&spi3 {
+        status = "okay";
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        touchscreen: touchscreen@0 {
+                compatible = "ovti,td4160b";
+                reg = <0>;
+                spi-max-frequency = <9600000>;
+                spi-cpol;                       /* SPI mode 3 */
+                spi-cpha;
+
+                interrupt-parent = <&ap_gpio>;
+                interrupts = <144 IRQ_TYPE_LEVEL_LOW>;  /* downstream: 0x2008 */
+
+                /* downstream: ACTIVE_HIGH + reset-on-state = 0 (reset == low) */
+                reset-gpios = <&ap_gpio 146 GPIO_ACTIVE_LOW>;
+
+                /* vdd-supply  = <&...>;   bus/IO */
+                /* avdd-supply = <&...>;   analog */
+
+                /* Only one panel phandle is possible; set it per board variant.
+                 * Drop it if the panel is not a mainline drm_panel. */
+                panel = <&pan>;
+                ovti,panel-variant = "dsjm-boe";
+
+                ovti,power-delay-ms = <200>;
+                ovti,reset-active-ms = <20>;
+                ovti,reset-delay-ms = <200>;
+                ovti,byte-delay-us = <0>;
+                ovti,block-delay-us = <0>;
+                ovti,ubl-max-frequency-hz = <3000000>;
+                ovti,ubl-byte-delay-us = <20>;
+        };
+};

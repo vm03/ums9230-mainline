@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config TOUCHSCREEN_OMNIVISION_TCM
+	tristate "Omnivision TCM v2 (TD4160B) SPI touchscreen"
+	depends on SPI && OF
+	depends on GPIOLIB
+	depends on DRM || !DRM
+	select DRM_PANEL if DRM
+	help
+	  Say Y here to enable support for Omnivision (ex-Synaptics) TDDI
+	  touch controllers using the TCM v2 protocol over SPI, such as the
+	  TD4160B.
+
+	  The HDL firmware images (hdl_firmware*.img, lpwg_hdl_firmware*.img,
+	  test_hdl_firmware*.img) must be available in /lib/firmware.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called omnivision_tcm_v2.
